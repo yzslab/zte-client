@@ -30,11 +30,13 @@ void DhcpClient::start() {
         }
 
         if (forkPid == 0) {
-            try {
-                execDhcpClient();
-                break;
-            } catch (DhcpClientExecException e) {
-                log(e.what());
+            while (true) {
+                try {
+                    execDhcpClient();
+                    break;
+                } catch (DhcpClientExecException e) {
+                    log(e.what());
+                }
             }
         } else
             break;
