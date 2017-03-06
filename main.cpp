@@ -7,11 +7,15 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include "includes/common.h"
 
 #include "classes/Zte.h"
 #include "classes/DhcpClient.h"
+
+#ifdef WEB_AUTH
 #include "classes/WebAuth.h"
+#endif
 
 #define DEFAULT_PID_FILE_PATH "/tmp/zte-client.pid"
 
@@ -222,9 +226,11 @@ int main(int argc, char *argv[]) {
 
     zte = new Zte(username, password, dev);
 
+#ifdef WEB_AUTH
     WebAuth *webAuthObj = nullptr;
     if (web_auth_username != nullptr)
         webAuthObj = new WebAuth(web_auth_username, web_auth_password, dev);
+#endif
 
     if (asDaemon) {
         if (unlock_pid_file()) {
@@ -261,10 +267,16 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, [] (int signo) { zte->stop();});
     signal(SIGHUP, [] (int signo) { zte->restart(); });
 
-    mutex zteClientMtx, dhcpClientMtx, webAuthMtx;
+    mutex zteClientMtx, dhcpClientMtx
+#ifdef WEB_AUTH
+    , webAuthMtx
+#endif
+    ;
     zteClientMtx.lock();
     dhcpClientMtx.lock();
+#ifdef WEB_AUTH
     webAuthMtx.lock();
+#endif
     thread zteClient([=] () { zte->start();}), *webAuth = nullptr;
     zteClient.detach();
 
@@ -278,6 +290,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_SUCCESS);
         if (zte->newConnection()) {
             dhcpClientObj.start();
+#ifdef WEB_AUTH
             if (web_auth_username != nullptr) {
                 if (webAuth != nullptr)
                     delete webAuth;
@@ -285,13 +298,16 @@ int main(int argc, char *argv[]) {
                     webAuthObj->start();
                 }))->detach();
             }
+#endif
         }
         sleep(1);
         if (times == 240) {
             if (time(NULL) - zte->getLastCommunicateTimestamp() >= 240) {
                 log("Zte authentication timeout");
                 zte->restart();
-            } else if (webAuthObj != nullptr) {
+            }
+#ifdef WEB_AUTH
+            else if (webAuthObj != nullptr) {
                 if (webAuth != nullptr) {
                     log("Another thread exists, delete it\n");
                     delete webAuth;
@@ -300,6 +316,7 @@ int main(int argc, char *argv[]) {
                     webAuthObj->start();
                 }))->detach();
             }
+#endif
             times = 0;
         } else
             ++times;
