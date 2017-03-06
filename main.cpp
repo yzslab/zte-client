@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     char const *pid_file_path = nullptr;
     int reconnect_tag = 0, logoff_tag = 0;
 
-    bool asDaemon = false;
+    bool asDaemon = false, noDhcpClient = false;
 
     // 以下两个Vars在web_auth.c中声明
     char *web_auth_username = nullptr, *web_auth_password  = nullptr;
@@ -173,6 +173,8 @@ int main(int argc, char *argv[]) {
                     dhcpClientType = DhcpClient::DHCLIENT;
                 else if (!strcmp(optarg, "udhcpc"))
                     dhcpClientType = DhcpClient::UDHCPC;
+                else if (!strcmp(optarg, "none"))
+                    noDhcpClient = true;
                 else {
                     fprintf(stderr, "Unknow DhcpClient client: %s, use dhclien instead.\n", optarg);
                 }
@@ -280,7 +282,9 @@ int main(int argc, char *argv[]) {
     thread zteClient([=] () { zte->start();}), *webAuth = nullptr;
     zteClient.detach();
 
-    DhcpClient dhcpClientObj(dhcpClientType, dev, dhcpClientMtx);
+    DhcpClient *dhcpClientObj = NULL;
+    if (!noDhcpClient)
+        dhcpClientObj = new DhcpClient(dhcpClientType, dev, dhcpClientMtx);
 
     string ip;
 
@@ -289,7 +293,8 @@ int main(int argc, char *argv[]) {
         if (zte->terminated())
             exit(EXIT_SUCCESS);
         if (zte->newConnection()) {
-            dhcpClientObj.start();
+            if (!noDhcpClient)
+                dhcpClientObj->start();
 #ifdef WEB_AUTH
             if (web_auth_username != nullptr) {
                 if (webAuth != nullptr)
@@ -337,10 +342,12 @@ void show_usage(void) {
                     "\t-d, --device\t\tSpecify which device to use.\n"
                     "\n"
                     "Optional arguments:\n\n"
+#ifdef WEB_AUTH
                     "\t-w, --webuser\t\tWeb auth username\n"
                     "\t-k, --webpass\t\tWeb auth password\n"
+#endif
                     "\t-f, --pidfile\t\tPid file path, default is " DEFAULT_PID_FILE_PATH "\n"
-                    "\t-i, --DhcpClient\t\tSelect DhcpClient client, only support dhclient and udhcpc, default is dhclient\n"
+                    "\t-i, --DhcpClient\t\tSelect DhcpClient client, only support dhclient and udhcpc, or none for no dhcp client, default is dhclient\n"
                     "\t-b, --daemon\t\tRun as daemon\n"
                     "\t-r, --reconnect\t\tReconnect\n"
                     "\t-l, --logoff\t\tLogoff.\n"
