@@ -121,13 +121,14 @@ int startWebAuth(webAuth *client) {
 
                 res = curl_easy_perform(curl);
 
+                curl_easy_cleanup(curl);
+
                 if(res != CURLE_OK) {
                     printf("curl_easy_perform() failed: %s\n",
                         curl_easy_strerror(res));
                     return 0;
                 }
 
-                curl_easy_cleanup(curl);
             } else {
                 return 0;
             }
@@ -160,13 +161,14 @@ static int getVerifyCode(webAuth *client) {
 
         res = curl_easy_perform(curl);
 
-        if(res != CURLE_OK) {
+      curl_easy_cleanup(curl);
+
+      if(res != CURLE_OK) {
             printf("curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
             return 0;
         }
 
-        curl_easy_cleanup(curl);
     } else {
         return 0;
     }
@@ -260,11 +262,12 @@ static void printReason(webAuth *client) {
 
         res = curl_easy_perform(curl);
 
-        if(res != CURLE_OK) {
+      curl_easy_cleanup(curl);
+
+      if(res != CURLE_OK) {
             printf("curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
         }
 
-        curl_easy_cleanup(curl);
     }
 }
