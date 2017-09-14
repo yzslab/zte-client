@@ -355,8 +355,11 @@ static void *startWebAuthClientAdapter(void *ptr) {
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR2);
+
+    // Unblock SIGUSR2, so as to interrupt sleep()
     pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
     signal(SIGUSR2, sighandler);
+
     int sig;
     sigwait(&sigset, &sig);
     while(1) {

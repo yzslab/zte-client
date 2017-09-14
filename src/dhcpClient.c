@@ -29,24 +29,38 @@ dhcpClient *createDhcpClient(const char *dev, dhcpClientType clientType) {
 }
 
 int startDhcpClient(dhcpClient *client) {
-    if (client->clientType == NONE)
-        return 0;
-    if (client->pid != -1)
-        kill(client->pid, SIGKILL);
-    client->pid = -1;
     char *dhclientArgv[] = {"dhclient", "-d", client->dev, NULL};
     char *udhcpcArgv[] = {"udhcpc", "-i", client->dev, NULL};
+    char **dhcpClient;
+
+    switch (client->clientType) {
+        case DHCLIENT:
+            dhcpClient = dhclientArgv;
+            break;
+        case UDHCPC:
+            dhcpClient = udhcpcArgv;
+            break;
+        default:
+            printf("Skip DHCP Client\n");
+            return 0;
+    }
+
+    if (client->pid > 0)
+        kill(client->pid, SIGKILL);
+    client->pid = -1;
     switch (client->pid = fork()) {
         case 0:
-            switch (client->clientType) {
-                case DHCLIENT:
-                    execvp("dhclient", dhclientArgv);
-                    break;
-                case UDHCPC:
-                    execvp("dhclient", udhcpcArgv);
-                    break;
-                default:
-                    printf("Unknow dhcp client type\n");
+            while (1) {
+                execvp(dhcpClient[0], dhcpClient);
+                perror("execvp()");
+                printf("Switch to ");
+                if (dhcpClient == dhclientArgv) {
+                    dhcpClient = udhcpcArgv;
+                } else {
+                    dhcpClient = dhclientArgv;
+                }
+                printf("%s, retry after 1 second, .\n", dhcpClient[0]);
+                sleep(1);
             }
             break;
         case -1:
