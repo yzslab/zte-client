@@ -3,7 +3,7 @@ project(zte_client)
 
 set(CMAKE_C_STANDARD 11)
 
-set(SOURCE_FILES main.c src/zte.c src/zte.h src/common.h src/exception.c src/exception.h src/webAuth.c src/webAuth.h src/dhcpClient.c src/dhcpClient.h)
+set(SOURCE_FILES main.c src/zte.c src/zte.h src/common.h src/exception.c src/exception.h src/webAuth.c src/webAuth.h src/dhcpClient.c src/dhcpClient.h src/base64.c src/base64.h)
 add_executable(zte_client ${SOURCE_FILES})
 
 target_link_libraries(zte_client curl)

@@ -14,6 +14,9 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include "base64.h"
 #include "common.h"
 #include "webAuth.h"
 
@@ -44,8 +47,14 @@ webAuth *createWebAuthClient(const char *username, const char *password, const c
     if (!client)
         return NULL;
 
+    char *encodedPassword;
+    size_t encodedLength;
+    encodedPassword = base64_encode(password, strlen(password), &encodedLength);
     strcpy(client->username, username);
-    strcpy(client->password, password);
+    strncpy(client->password, encodedPassword, encodedLength);
+    client->password[encodedLength] = '\0';
+    free(encodedPassword);
+    base64_cleanup();
     strcpy(client->dev, dev);
 
     // 生成验证码文件路径

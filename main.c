@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "src/common.h"
 #include "src/zte.h"
 #include "src/dhcpClient.h"
@@ -475,7 +476,7 @@ static void openLogFile(char *logFilePath) {
 
 void showUsage(void) {
     printf(
-            "ZTE Authentication Linux Client 3.0.\n\n"
+            "ZTE Authentication Linux Client 3.1.\n\n"
                     "Based on Dot1x client, re-develop by Zhensheng Yuan @ CCDGUT, 2017-01\n"
                     "Zhensheng Yuan's weblog: http://zhensheng.im\n"
                     "\n"
