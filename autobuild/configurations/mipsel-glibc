@@ -1,0 +1,7 @@
+NAME="mipsel-glibc"
+MAKE_JOBS=32
+HOST="mipsel"
+PREFIX="${autobuild_dir}/${NAME}/"
+SRC_DIR="${autobuild_dir}/src/"
+export CC="/usr/bin/mipsel-linux-gnu-gcc"
+export CXX="/usr/bin/mipsel-linux-gnu-g++"

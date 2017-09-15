@@ -1,0 +1,7 @@
+NAME="armhf-glibc"
+MAKE_JOBS=32
+HOST="armel"
+PREFIX="${autobuild_dir}/${NAME}/"
+SRC_DIR="${autobuild_dir}/src/"
+export CC="/usr/bin/arm-linux-gnueabihf-gcc"
+export CXX="/usr/bin/arm-linux-gnueabihf-g++"

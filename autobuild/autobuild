@@ -16,7 +16,7 @@ function build_zte_client() {
 	mkdir -p ${1}/zte-client-build
 	pushd ${1}/zte-client-build
 	${CC} -I${PREFIX}tesseract-${HOST}/include -I${PREFIX}curl-${HOST}/include/ -I${PREFIX}leptonica-${HOST}/include/ ../../../main.c ../../../src/zte.c ../../../src/dhcpClient.c ../../../src/exception.c ../../../src/webAuth.c ../../../src/base64.c -c || exit 1
-	${CXX} main.o zte.o dhcpClient.o exception.o webAuth.o base64.o ${PREFIX}/curl-${HOST}/lib/libcurl.a ${PREFIX}/leptonica-${HOST}/lib/liblept.a ${PREFIX}/tesseract-${HOST}/lib/libtesseract.a ${PREFIX}/libjpeg-${HOST}/lib/libjpeg.a -lpthread -static-libstdc++ -lrt -ldl -o zte-client || exit 1
+	${CXX} main.o zte.o dhcpClient.o exception.o webAuth.o base64.o ${PREFIX}/curl-${HOST}/lib/libcurl.a ${PREFIX}/leptonica-${HOST}/lib/liblept.a ${PREFIX}/tesseract-${HOST}/lib/libtesseract.a ${PREFIX}/libjpeg-${HOST}/lib/libjpeg.a -lpthread -static-libstdc++ -lrt -ldl -o ${autobuild_dir}/zte-client-${1} || exit 1
 	popd
 }
 
