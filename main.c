@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
             },
             {
                     "webpass_encoder",
-                    no_argument,
+                    required_argument,
                     NULL,
                     'e'
             }
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
     int asDaemon = 0;
     encoder web_auth_password_enocod = NONE_ENCODER;
     char *dev = NULL, *username = NULL, *password = NULL, *web_auth_username = NULL, *web_auth_password = NULL, reconnect_tag = 0, logoff_tag = 0, *pid_file_path = NULL, *log_file_path = NULL, noDhcpClient = 0, dhcpClientType = DHCLIENT;
-    while ((ch = getopt_long(argc, argv, "bhrled:u:p:f:m:i:", long_options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "bhrld:e:u:p:f:m:i:", long_options, NULL)) != -1) {
         switch (ch) {
             case 0:
                 break;
