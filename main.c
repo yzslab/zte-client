@@ -32,7 +32,7 @@ static void logoff();
 static void openLogFile(char *logFilePath);
 void showUsage();
 
-typedef static enum encoder {
+typedef enum encoder {
     NONE_ENCODER,
     BASE64_ENCODER
 } encoder;
