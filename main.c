@@ -12,6 +12,7 @@
 #include "src/zte.h"
 #include "src/dhcpClient.h"
 #include "src/webAuth.h"
+#include "src/base64.h"
 
 #define DEFAULT_PID_FILE_PATH "/tmp/zte-client.pid"
 
@@ -30,6 +31,11 @@ static void reconnect();
 static void logoff();
 static void openLogFile(char *logFilePath);
 void showUsage();
+
+typedef static enum encoder {
+    NONE_ENCODER,
+    BASE64_ENCODER
+} encoder;
 
 int asDaemond = 0;
 static int pid_fd;
@@ -107,6 +113,13 @@ int main(int argc, char *argv[]) {
                     'm',
             },
             {
+                    "webpass_encoder",
+                    no_argument,
+                    NULL,
+                    'e'
+            }
+            ,
+            {
                     "reconnect",
                     no_argument,
                     NULL,
@@ -123,8 +136,9 @@ int main(int argc, char *argv[]) {
 
     int ch;
     int asDaemon = 0;
+    encoder web_auth_password_enocod = NONE_ENCODER;
     char *dev = NULL, *username = NULL, *password = NULL, *web_auth_username = NULL, *web_auth_password = NULL, reconnect_tag = 0, logoff_tag = 0, *pid_file_path = NULL, *log_file_path = NULL, noDhcpClient = 0, dhcpClientType = DHCLIENT;
-    while ((ch = getopt_long(argc, argv, "bhrld:u:p:f:m:i:", long_options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "bhrled:u:p:f:m:i:", long_options, NULL)) != -1) {
         switch (ch) {
             case 0:
                 break;
@@ -168,6 +182,10 @@ int main(int argc, char *argv[]) {
                 else {
                     fprintf(stderr, "Unknow DhcpClient client: %s, use dhclien instead.\n", optarg);
                 }
+                break;
+            case 'e':
+                if (!strcmp(optarg, "base64"))
+                    web_auth_password_enocod = BASE64_ENCODER;
                 break;
             case 'h':
                 showUsage();
@@ -240,8 +258,24 @@ int main(int argc, char *argv[]) {
     if (dhcpClientType != NONE)
         dhcpClient1 = createDhcpClient(dev, dhcpClientType);
     webAuth *webAuth1 = NULL;
-    if (web_auth_username && web_auth_password)
+    char *encodedPassword;
+    size_t encodedLength, passwordLength, bufferLength;
+    if (web_auth_username && web_auth_password) {
+        switch (web_auth_password_enocod) {
+            case BASE64_ENCODER:
+                passwordLength = strlen(web_auth_password);
+                encodedPassword = alloca(bufferLength = (encoded_output_length(passwordLength) + 1));
+                if (base64_encode(web_auth_password, passwordLength, &encodedLength, encodedPassword, bufferLength) == NULL) {
+                    printf("Encode error, skip web auth.\n");
+                    goto AFTER_WEB_AUTH;
+                }
+                encodedPassword[encodedLength] = '\0';
+                web_auth_password = encodedPassword;
+                break;
+        }
         webAuth1 = createWebAuthClient(web_auth_username, web_auth_password, dev);
+    }
+    AFTER_WEB_AUTH:
     while (1) {
         switch (setjmp(mainEnv)) {
             case 0:

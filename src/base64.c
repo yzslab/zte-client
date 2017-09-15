@@ -19,15 +19,34 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 static char *decoding_table = NULL;
 static int mod_table[] = {0, 2, 1};
 
+size_t encoded_output_length(size_t input_length) {
+    return 4 * ((input_length + 2) / 3);
+}
+
+size_t decoded_output_length(size_t input_length) {
+    if (input_length % 4 != 0)
+        return 0;
+    return input_length / 4 * 3;
+}
+
+
 
 char *base64_encode(const unsigned char *data,
                     size_t input_length,
-                    size_t *output_length) {
+                    size_t *output_length,
+                    void *buffer,
+                    size_t buffer_length
+) {
 
-    *output_length = 4 * ((input_length + 2) / 3);
+    *output_length = encoded_output_length(input_length);
 
-    char *encoded_data = malloc(*output_length);
-    if (encoded_data == NULL) return NULL;
+    char *encoded_data = buffer;
+    if (encoded_data == NULL) {
+        encoded_data = malloc(*output_length);
+        if (encoded_data == NULL)
+            return NULL;
+    } else if (buffer_length < *output_length)
+        return NULL;
 
     int i, j;
     for (i = 0, j = 0; i < input_length;) {
@@ -50,21 +69,28 @@ char *base64_encode(const unsigned char *data,
     return encoded_data;
 }
 
-
 unsigned char *base64_decode(const char *data,
                              size_t input_length,
-                             size_t *output_length) {
+                             size_t *output_length,
+                             void *buffer,
+                             size_t buffer_length
+) {
 
     if (decoding_table == NULL) build_decoding_table();
 
     if (input_length % 4 != 0) return NULL;
 
-    *output_length = input_length / 4 * 3;
+    *output_length = decoded_output_length(input_length);
     if (data[input_length - 1] == '=') (*output_length)--;
     if (data[input_length - 2] == '=') (*output_length)--;
 
-    unsigned char *decoded_data = malloc(*output_length);
-    if (decoded_data == NULL) return NULL;
+    unsigned char *decoded_data = buffer;
+    if (decoded_data == NULL) {
+        decoded_data = malloc(*output_length);
+        if (decoded_data == NULL)
+            return NULL;
+    } else if (buffer_length < *output_length)
+        return NULL;
 
     int i, j;
     for (i = 0, j = 0; i < input_length;) {
