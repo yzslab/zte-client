@@ -1,0 +1,183 @@
+#!/bin/bash
+if [ ! -d configurations ];then
+	echo -e "Directory configurations not found at $(pwd).\a"
+	exit 1
+fi
+
+CURL_VERSION="7.54.1"
+LEPT_VERSION="1.74.4"
+TESSERACT_VERSION="3.05.01"
+LIBJPEG_VERSION="1.5.2"
+
+autobuild_dir=$(pwd)
+
+function build_zte_client() {
+    echo -e "\n\nBuild zte-client:\n"
+	mkdir -p ${1}/zte-client-build
+	pushd ${1}/zte-client-build
+	${CC} -I${PREFIX}tesseract-${HOST}/include -I${PREFIX}curl-${HOST}/include/ -I${PREFIX}leptonica-${HOST}/include/ ../../../main.c ../../../src/zte.c ../../../src/dhcpClient.c ../../../src/exception.c ../../../src/webAuth.c ../../../src/base64.c -c || exit 1
+	${CXX} main.o zte.o dhcpClient.o exception.o webAuth.o base64.o ${PREFIX}/curl-${HOST}/lib/libcurl.a ${PREFIX}/leptonica-${HOST}/lib/liblept.a ${PREFIX}/tesseract-${HOST}/lib/libtesseract.a ${PREFIX}/libjpeg-${HOST}/lib/libjpeg.a -lpthread -static-libstdc++ -lrt -ldl -o zte-client || exit 1
+	popd
+}
+
+function download_source() {
+	mkdir -p ${SRC_DIR}
+	pushd ${SRC_DIR} || exit -1
+	if [ ! -d curl-${CURL_VERSION} ] || [ "${1}" == "force" ];then
+		wget -O- https://curl.haxx.se/download/curl-${CURL_VERSION}.tar.bz2 | tar -xjvf-
+	fi
+	if [ ! -d leptonica-${LEPT_VERSION} ] || [ "${1}" == "force" ];then
+		wget -O- http://www.leptonica.com/source/leptonica-${LEPT_VERSION}.tar.gz | tar -zxvf-
+	fi
+	if [ ! -d tesseract-${TESSERACT_VERSION} ] || [ "${1}" == "force" ];then
+		wget -O- https://github.com/tesseract-ocr/tesseract/archive/${TESSERACT_VERSION}.tar.gz | tar -zxvf-
+	fi
+	if [ ! -d libjpeg-turbo-${LIBJPEG_VERSION} ] || [ "${1}" == "force" ];then
+		wget -O- https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${LIBJPEG_VERSION}.tar.gz | tar -zxvf-
+	fi
+	popd
+}
+
+function pushd_curl() {
+	pushd ${SRC_DIR}/curl-${CURL_VERSION}
+}
+
+function pushd_leptonica() {
+	pushd ${SRC_DIR}/leptonica-${LEPT_VERSION}
+}
+
+function pushd_tesseract() {
+	pushd ${SRC_DIR}/tesseract-${TESSERACT_VERSION}
+}
+
+function pushd_libjpeg() {
+	pushd ${SRC_DIR}/libjpeg-turbo-${LIBJPEG_VERSION}
+}
+
+function build_curl() {
+	if [ -d ${PREFIX}curl-${HOST} ] && [ "${1}" != "force" ];then
+		return
+	fi
+	pushd_curl
+	make -j${MAKE_JOBS} clean
+	./configure \
+--host=${HOST} \
+--prefix=${PREFIX}curl-${HOST} \
+--disable-debug \
+--disable-ares \
+--disable-rt \
+--disable-largefile \
+--disable-libtool-lock \
+--disable-ftp \
+--disable-ldap \
+--disable-ldaps \
+--disable-rtsp \
+--disable-proxy \
+--disable-dict \
+--disable-telnet \
+--disable-tftp \
+--disable-pop3 \
+--disable-imap \
+--disable-smb \
+--disable-smtp \
+--disable-gopher \
+--disable-manual \
+--disable-ipv6 \
+--disable-sspi \
+--disable-crypto-auth \
+--disable-ntlm-wb \
+--disable-tls-srp \
+--disable-unix-sockets \
+--disable-soname-bump \
+--without-zlib \
+--without-winssl \
+--without-darwinssl \
+--without-ssl \
+--without-gnutls \
+--without-polarssl \
+--without-mbedtls \
+--without-cyassl \
+--without-nss \
+--without-axtls \
+--without-libpsl \
+--without-libmetalink \
+--without-libssh2 \
+--without-librtmp \
+--without-winidn \
+--without-libidn2 \
+--without-nghttp2 || exit 1
+	make -j${MAKE_JOBS} && make -j${MAKE_JOBS} install || exit 1
+	popd
+}
+
+function build_libjpeg() {
+	if [ -d ${PREFIX}libjpeg-${HOST} ] && [ "${1}" != "force" ];then
+		return
+	fi
+	pushd_libjpeg
+	make -j${MAKE_JOBS} clean
+	autoreconf -fiv
+	./configure \
+--host=${HOST} \
+--prefix=${PREFIX}libjpeg-${HOST} || exit 1
+	make -j${MAKE_JOBS} && make -j${MAKE_JOBS} install || exit 1
+	popd
+}
+
+function build_leptonica() {
+	if [ -d ${PREFIX}leptonica-${HOST} ] && [ "${1}" != "force" ];then
+		return
+	fi
+	pushd_leptonica
+	make -j${MAKE_JOBS} clean
+	CFLAGS="-I${PREFIX}libjpeg-${HOST}/include/ -L${PREFIX}libjpeg-${HOST}/lib/" \
+./configure \
+--host=${HOST} \
+--prefix=${PREFIX}leptonica-${HOST} \
+--without-zlib \
+--without-libpng \
+--without-giflib \
+--without-libtiff \
+--without-libwebp \
+--without-libopenjpeg || exit 1
+	make -j${MAKE_JOBS} && make -j${MAKE_JOBS} install || exit 1
+	popd
+}
+
+function build_tesseract() {
+	if [ -d ${PREFIX}tesseract-${HOST} ] && [ "${1}" != "force" ];then
+		return
+	fi
+	pushd_tesseract
+	make -j${MAKE_JOBS} clean
+	./autogen.sh
+	PKG_CONFIG_PATH="${PREFIX}leptonica-${HOST}/lib/pkgconfig/" \
+./configure \
+--host=${HOST} \
+--disable-largefile \
+--disable-graphics \
+--enable-embedded \
+--prefix=${PREFIX}tesseract-${HOST} || exit 1
+	make -j${MAKE_JOBS} && make -j${MAKE_JOBS} install || exit 1
+	popd
+}
+
+
+function build() {
+	echo -e "\n\nBuild curl:"
+	build_curl ${1}
+	echo -e "\n\nBuild libjpeg:"
+	build_libjpeg ${1}
+	echo -e "\n\nBuild leptonica:"
+	build_leptonica ${1}
+	echo -e "\n\nBuild tesseract:"
+	build_tesseract ${1}
+}
+
+for i in configurations/*;do
+	echo -e "\n\nBUILD: ${i}\n"
+	. ${i}
+	download_source ${1}
+	build ${1}
+	build_zte_client ${NAME}
+done
