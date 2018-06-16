@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.7)
 project(zte_client)
 
 set(CMAKE_C_STANDARD 11)
