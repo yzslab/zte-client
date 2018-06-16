@@ -387,7 +387,7 @@ static void stdoutLogger(char *format, va_list ap) {
 }
 
 static void syslogLogger(char *format, va_list ap) {
-    vsyslog(LOG_WARNING, format, ap);
+    vsyslog(LOG_INFO, format, ap);
 }
 
 static void *startZteClientAdapter(void *ptr) {
