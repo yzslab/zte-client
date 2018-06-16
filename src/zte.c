@@ -155,7 +155,7 @@ static void closeEpfd(zte *zteClient) {
 }
 
 static int socketInit(zte *zteClient) {
-    printf("Socket init\n");
+    zteLog("Socket init\n");
     if (zteClient->epfd != -1)
         closeEpfd(zteClient);
     if (zteClient->socketFD != -1)
@@ -209,6 +209,9 @@ int startZteClient(zte *zteClient) {
     struct epoll_event evlist[1];
     int timeout;
     int readBytes;
+
+    char errorBuffer[128];
+
     exception *ex;
     switch (setjmp(zteClient->zteClientEnv)) {
         case 0:
@@ -218,9 +221,10 @@ int startZteClient(zte *zteClient) {
             break;
         default:
             ex = getException(*zteClient->exceptionIndex);
-            printf("Message: %s:%d %s with code %d\n", ex->fileName, ex->line, ex->message, ex->code);
+            zteLog("Message: %s:%d %s with code %d\n", ex->fileName, ex->line, ex->message, ex->code);
             destroyException(*zteClient->exceptionIndex);
-            perror("error");
+            strerror_r(errno, errorBuffer, 127);
+            zteLog("error: %s\n", errorBuffer);
     }
     while (1) {
         if (zteClient->status == EAPOL_LOGOFF)
@@ -237,7 +241,7 @@ int startZteClient(zte *zteClient) {
                             longjmp(zteClient->zteClientEnv, SOCKET_INIT_REQUIRE);
                             break;
                         case 0:
-                            printf("Heart break timeout, restart zte authentication\n");
+                            zteLog("Heart break timeout, restart zte authentication\n");
                             longjmp(zteClient->zteClientEnv, ZTE_CLIENT_EAPOL_RESTART);
                             break;
                         default:
@@ -256,13 +260,13 @@ int startZteClient(zte *zteClient) {
                                                     eapIdentity(zteClient);
                                                     break;
                                                 case EAP_TYPE_NOTIFICATION:
-                                                    printf("EAP Request Notification\n%s\n", zteClient->last);
+                                                    zteLog("EAP Request Notification\n%s\n", zteClient->last);
                                                     break;
                                                 case EAP_TYPE_MD5:
                                                     eapMd5(zteClient);
                                                     break;
                                                 default:
-                                                    printf("Unknow eap type: %d\n", zteClient->eap->type);
+                                                    zteLog("Unknow eap type: %d\n", zteClient->eap->type);
                                                     break;
                                             }
                                             break;
@@ -271,15 +275,15 @@ int startZteClient(zte *zteClient) {
                                             // count = count_aim = 0;
                                             timeout = 240000;
                                             kill(getpid(), SIGUSR1);
-                                            printf("EAP Success\n");
+                                            zteLog("EAP Success\n");
                                             // exit(0);
                                             // newConnectionTag = true;
                                             break;
                                         case EAP_FAILURE:
-                                            printf("EAP Failure\n");
+                                            zteLog("EAP Failure\n");
                                             longjmp(zteClient->zteClientEnv, ZTE_CLIENT_EAPOL_RESTART);
                                         default:
-                                            printf("Unknow eapol type: %d\n", zteClient->eap->code);
+                                            zteLog("Unknow eapol type: %d\n", zteClient->eap->code);
                                             break;
                                     }
                                     break;
@@ -289,12 +293,12 @@ int startZteClient(zte *zteClient) {
                                             eapolKeyRc4(zteClient);
                                             break;
                                         default:
-                                            printf("Unknow key type: %d\n", zteClient->eap->code);
+                                            zteLog("Unknow key type: %d\n", zteClient->eap->code);
                                             break;
                                     }
                                     break;
                                 default:
-                                    printf("Unknow packet type: %d\n", zteClient->eapol->type);
+                                    zteLog("Unknow packet type: %d\n", zteClient->eapol->type);
                                     break;
                             }
                             break;
@@ -324,7 +328,7 @@ static int sendEth(zte *zteClient, unsigned short int proto, unsigned short int 
     zteClient->eth->proto = htons(proto);
     t = send(zteClient->socketFD, zteClient->buffer, t, 0);
     if(t < 0){
-        printf("Send(): %s %d\n", strerror(errno), errno);
+        zteLog("Send(): %s %d\n", strerror(errno), errno);
         zteClient->status = EAP_FAILURE;
         longjmp(zteClient->zteClientEnv, SOCKET_INIT_REQUIRE);
     }
@@ -349,13 +353,13 @@ static void sendEap(zte *zteClient, unsigned char code, unsigned short int len) 
 static void eapolStart(zte *zteClient) {
     sendEapol(zteClient, EAPOL_START, 0);
     zteClient->status = EAPOL_START;
-    printf("EAPOL Start\n");
+    zteLog("EAPOL Start\n");
 }
 
 static void eapolLogoff(zte *zteClient) {
     if (zteClient->status == EAP_SUCCESS)
         sendEapol(zteClient, EAPOL_LOGOFF, 0);
-    printf("EAPOL Logoff\n");
+    zteLog("EAPOL Logoff\n");
 /*    if (!continueZteClient) {
         close(socketFD);
         terminatedTag = true;
@@ -364,17 +368,17 @@ static void eapolLogoff(zte *zteClient) {
 
 static void eapIdentity(zte *zteClient) {
     int t;
-    printf("EAP Request Identity\n");
+    zteLog("EAP Request Identity\n");
     t = strlen(strcpy((char *) zteClient->last, zteClient->username));
     sendEap(zteClient, EAP_RESPONSE, t);
-    printf("EAP Response Identity\n");
+    zteLog("EAP Response Identity\n");
 }
 
 static void eapMd5(zte *zteClient) {
     int t;
     unsigned char tb[PKT_SIZE];
     MD5_CTX context;
-    printf("EAP Request MD5\n");
+    zteLog("EAP Request MD5\n");
     t = 0;
     tb[t++] = zteClient->eap->id;
     t += strlen(strcat(strcpy((char *) (tb + t), zteClient->password), salt));
@@ -386,14 +390,14 @@ static void eapMd5(zte *zteClient) {
     memcpy(zteClient->md5->value, tb + t, 16);
     t = sizeof(struct md5) + strlen(strcpy((char *) zteClient->md5->username, zteClient->username)) - 1;
     sendEap(zteClient, EAP_RESPONSE, t);
-    printf("EAP Response MD5\n");
+    zteLog("EAP Response MD5\n");
 }
 
 static void eapolKeyRc4(zte *zteClient) {
     int t;
     unsigned char enckey[]={0x02,0x0E,0x05,0x04,0x66,0x40,0x19,0x75,0x06,0x06,0x00,0x16,0xD3,0xF3,0xAC,0x02};
     unsigned char wholekey[20];
-    printf("EAPOL Request Key RC4\n");
+    zteLog("EAPOL Request Key RC4\n");
     t = sizeof(struct key) + ntohs(zteClient->key->keylen) - 16;
     //key
     memcpy(wholekey, zteClient->key->keyiv, 16);
@@ -405,5 +409,5 @@ static void eapolKeyRc4(zte *zteClient) {
     hmac_md5((unsigned char *) zteClient->eapol, sizeof(struct eapol) + t, &zteClient->key->keyindex, 1, wholekey);
     memcpy(zteClient->key->keysignature, wholekey, 16);
     sendEapol(zteClient, EAPOL_KEY, t);
-    printf("EAPOL Response Key RC4\n");
+    zteLog("EAPOL Response Key RC4\n");
 }

@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 #include "common.h"
 #include "dhcpClient.h"
 
@@ -41,7 +42,7 @@ int startDhcpClient(dhcpClient *client) {
             dhcpClient = udhcpcArgv;
             break;
         default:
-            printf("Skip DHCP Client\n");
+            zteLog("Skip DHCP Client\n");
             return 0;
     }
 
@@ -52,19 +53,21 @@ int startDhcpClient(dhcpClient *client) {
         case 0:
             while (1) {
                 execvp(dhcpClient[0], dhcpClient);
-                perror("execvp()");
-                printf("Switch to ");
+                zteLog("execvp(): %s\n", strerror(errno));
+                // perror("execvp()");
+                zteLog("Switch to ");
                 if (dhcpClient == dhclientArgv) {
                     dhcpClient = udhcpcArgv;
                 } else {
                     dhcpClient = dhclientArgv;
                 }
-                printf("%s, retry after 1 second, .\n", dhcpClient[0]);
+                zteLog("%s, retry after 1 second, .\n", dhcpClient[0]);
                 sleep(1);
             }
             break;
         case -1:
-            perror("fork()");
+            zteLog("fork(): %s\n", strerror(errno));
+            // perror("fork()");
             break;
         default:
             return 0;

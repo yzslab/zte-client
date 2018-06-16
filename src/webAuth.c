@@ -52,11 +52,11 @@ webAuth *createWebAuthClient(const char *username, const char *password, const c
 
     // 生成验证码文件路径
     sprintf(client->verifyCodeFilePath, "/tmp/zte_web_auth_verify_code_%d", timestamp);
-    printf("Verify code file path: %s\n", client->verifyCodeFilePath);
+    zteLog("Verify code file path: %s\n", client->verifyCodeFilePath);
 
     // 生成Cookie文件路径
     sprintf(client->cookieFilePath, "/tmp/zte_web_auth_cookie_%d", timestamp);
-    printf("Cookie file path: %s\n", client->cookieFilePath);
+    zteLog("Cookie file path: %s\n", client->cookieFilePath);
 
 
     // 生成验证结果文件路径
@@ -66,7 +66,7 @@ webAuth *createWebAuthClient(const char *username, const char *password, const c
     */
 
     if ((client->verifyCodeFileFd = open(client->verifyCodeFilePath, O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH)) < 0) {
-        printf("Verify code file open: %s", strerror(errno));
+        zteLog("Verify code file open: %s", strerror(errno));
         free(client);
         return NULL;
     }
@@ -106,7 +106,7 @@ int startWebAuth(webAuth *client) {
     if (getVerifyCode(client)) {
         if ((verify_code = ocrVerifyCode(client)) >= 0) {
             sprintf(auth_body, "userName1=%s&password1=%s&eduuser=%s&edubas=%s&rand=%d", client->username, client->password, client->ip, EDUBAS, verify_code); // 生成表单数据
-            printf("auth_body: %s\n", auth_body);
+            zteLog("auth_body: %s\n", auth_body);
             CURL *curl;
             CURLcode res;
 
@@ -126,7 +126,7 @@ int startWebAuth(webAuth *client) {
                 curl_easy_cleanup(curl);
 
                 if(res != CURLE_OK) {
-                    printf("curl_easy_perform() failed: %s\n",
+                    zteLog("curl_easy_perform() failed: %s\n",
                         curl_easy_strerror(res));
                     return 0;
                 }
@@ -139,11 +139,11 @@ int startWebAuth(webAuth *client) {
 
             return success;
         } else {
-            printf("Fail to do ocr\n");
+            zteLog("Fail to do ocr\n");
             return 0;
         }
     } else {
-        printf("Fail to get verify code\n");
+        zteLog("Fail to get verify code\n");
         return 0;
     }
 }
@@ -166,10 +166,10 @@ static int getVerifyCode(webAuth *client) {
       curl_easy_cleanup(curl);
 
       if(res != CURLE_OK) {
-            printf("curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
-            return 0;
-        }
+          zteLog("curl_easy_perform() failed: %s\n",
+                 curl_easy_strerror(res));
+          return 0;
+      }
 
     } else {
         return 0;
@@ -184,24 +184,24 @@ static int ocrVerifyCode(webAuth *client) {
     int verify_code;
 
     if((img = pixRead(client->verifyCodeFilePath)) == NULL) {
-        fprintf(stderr, "Error reading image\n");
+        zteLog("Error reading image\n");
         return -1;
     }
 
     handle = TessBaseAPICreate();
     if(TessBaseAPIInit3(handle, NULL, "eng") != 0) {
-        fprintf(stderr, "Error initialising tesseract\n");
+        zteLog("Error initialising tesseract\n");
         return -2;
     }
 
     TessBaseAPISetImage2(handle, img);
     if(TessBaseAPIRecognize(handle, NULL) != 0) {
-        fprintf(stderr, "Error in Tesseract recognition\n");
+        zteLog("Error in Tesseract recognition\n");
         return -3;
     }
 
     if((text = TessBaseAPIGetUTF8Text(handle)) == NULL) {
-        fprintf(stderr, "Error getting text\n");
+        zteLog("Error getting text\n");
         return -4;
     }
 
@@ -217,16 +217,18 @@ static int ocrVerifyCode(webAuth *client) {
 
 static size_t headerCallback(char *buffer, size_t size, size_t nitems, void *success) {
     if (!strncmp(buffer, "Lo", 2)) {
-        printf("Respon header Location found\n");
+        zteLog("Respon header Location found\n");
 
         if (!strncmp(buffer + 10, SUCCESS_RETURN, strlen(SUCCESS_RETURN))) {
             * (char *) success = 1;
-            printf("Success location match!\n");
+            zteLog("Success location match!\n");
         }
     }
 
     return size * nitems; // 此处只为了让libcurl认为成功
 }
+
+static char errorBuffer[256];
 
 static size_t writeCallback(char *ptr, size_t size, size_t nmemb, void *userdata) {
     int fd = *((int *) userdata);
@@ -234,7 +236,8 @@ static size_t writeCallback(char *ptr, size_t size, size_t nmemb, void *userdata
     size_t write_size; // 用于保存写入量
 
     if ((write_size = (size_t) write(fd, ptr, size * nmemb)) <= 0) {
-        perror("Verify code write");
+        strerror_r(errno, errorBuffer, 255);
+        zteLog("Verify code write: %s\n", errorBuffer);
         return 0;
     }
 
@@ -245,7 +248,7 @@ static size_t logCallback(char *ptr, size_t size, size_t nmemb, void *userdata) 
     char *buffer = (char *) alloca(size * nmemb + 1);
     buffer[size * nmemb] = '\0';
     strncpy(buffer, ptr, size * nmemb);
-    printf(buffer);
+    zteLog(buffer);
     return size * nmemb;
 }
 
@@ -267,9 +270,9 @@ static void printReason(webAuth *client) {
       curl_easy_cleanup(curl);
 
       if(res != CURLE_OK) {
-            printf("curl_easy_perform() failed: %s\n",
+          zteLog("curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
-        }
+      }
 
     }
 }

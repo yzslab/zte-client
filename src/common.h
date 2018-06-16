@@ -12,6 +12,8 @@
 #define PASSWORD_MAX_LENGTH 32
 #define DEV_MAX_LENGTH 16
 
+void zteLog(char *format, ...);
+
 extern jmp_buf mainEnv;
 
 

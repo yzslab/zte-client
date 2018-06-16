@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <syslog.h>
+#include <stdarg.h>
 #include "src/common.h"
 #include "src/zte.h"
 #include "src/dhcpClient.h"
@@ -41,6 +43,11 @@ int asDaemond = 0;
 static int pid_fd;
 static FILE *pid_fp; // pid文件的指针
 static pid_t pid;
+
+static void stdoutLogger(char *format, va_list ap);
+static void syslogLogger(char *format, va_list ap);
+
+static void (*loggerPointer)(char *, va_list) = stdoutLogger;
 
 int main(int argc, char *argv[]) {
     int exceptionIndex, sig;
@@ -111,6 +118,12 @@ int main(int argc, char *argv[]) {
                     required_argument,
                     NULL,
                     'm',
+            },
+            {
+                    "syslog",
+                    no_argument,
+                    NULL,
+                    's'
             },
             {
                     "webpass_encoder",
@@ -187,6 +200,10 @@ int main(int argc, char *argv[]) {
                 if (!strcmp(optarg, "base64"))
                     web_auth_password_enocod = BASE64_ENCODER;
                 break;
+            case 's':
+                openlog("zte-client", LOG_PID, LOG_DAEMON);
+                loggerPointer = syslogLogger;
+                break;
             case 'h':
                 showUsage();
                 exit(EXIT_SUCCESS);
@@ -206,7 +223,7 @@ int main(int argc, char *argv[]) {
 
     // pid文件打开失败时的处理
     if (pid_fd < 0){
-        perror ("Pid file open failed");
+        perror("Pid file open failed");
         exit(EXIT_FAILURE);
     }
 
@@ -266,7 +283,7 @@ int main(int argc, char *argv[]) {
                 passwordLength = strlen(web_auth_password);
                 encodedPassword = alloca(bufferLength = (encoded_output_length(passwordLength) + 1));
                 if (base64_encode(web_auth_password, passwordLength, &encodedLength, encodedPassword, bufferLength) == NULL) {
-                    printf("Encode error, skip web auth.\n");
+                    zteLog("Encode error, skip web auth.\n");
                     goto AFTER_WEB_AUTH;
                 }
                 encodedPassword[encodedLength] = '\0';
@@ -342,15 +359,15 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case -1:
-                printf("Error\n");
+                zteLog("Error\n");
                 break;
             case 1:
                 ex = getException(exceptionIndex);
-                printf("Message: %s:%d %s with code %d\n", ex->fileName, ex->line, ex->message, ex->code);
+                zteLog("Message: %s:%d %s with code %d\n", ex->fileName, ex->line, ex->message, ex->code);
                 destroyException(exceptionIndex);
                 break;
             default:
-                printf("Unknow error\n");
+                zteLog("Unknow error\n");
                 break;
         }
     }
@@ -358,8 +375,23 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void zteLog(char *format, ...) {
+    va_list argp;
+    va_start(argp, format);
+    loggerPointer(format, argp);
+    va_end(argp);
+}
+
+static void stdoutLogger(char *format, va_list ap) {
+    vprintf(format, ap);
+}
+
+static void syslogLogger(char *format, va_list ap) {
+    vsyslog(LOG_INFO, format, ap);
+}
+
 static void *startZteClientAdapter(void *ptr) {
-    printf("Zte Client thread start\n");
+    zteLog("Zte Client thread start\n");
     startZteClient(ptr);
     return NULL;
 }
@@ -369,7 +401,7 @@ static void sighandler(int sig) {
 }
 
 static void *startDhcpClientAdapter(void *ptr) {
-    printf("DHCP Client thread start\n");
+    zteLog("DHCP Client thread start\n");
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR2);
@@ -385,7 +417,7 @@ static void *startDhcpClientAdapter(void *ptr) {
 }
 
 static void *startWebAuthClientAdapter(void *ptr) {
-    printf("Web Auth Client thread start\n");
+    zteLog("Web Auth Client thread start\n");
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR2);
