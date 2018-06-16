@@ -210,6 +210,8 @@ int startZteClient(zte *zteClient) {
     int timeout;
     int readBytes;
 
+    int errorCounter = 0;
+
     char errorBuffer[128];
 
     exception *ex;
@@ -271,6 +273,7 @@ int startZteClient(zte *zteClient) {
                                             }
                                             break;
                                         case EAP_SUCCESS:
+                                            errorCounter = 0;
                                             zteClient->status = EAP_SUCCESS;
                                             // count = count_aim = 0;
                                             timeout = 240000;
@@ -281,6 +284,12 @@ int startZteClient(zte *zteClient) {
                                             break;
                                         case EAP_FAILURE:
                                             zteLog("EAP Failure\n");
+                                            ++errorCounter;
+                                            if (errorCounter >= 3) {
+                                                errorCounter = 0;
+                                                zteLog("Retry after 5 seconds\n");
+                                                sleep(5);
+                                            }
                                             longjmp(zteClient->zteClientEnv, ZTE_CLIENT_EAPOL_RESTART);
                                         default:
                                             zteLog("Unknow eapol type: %d\n", zteClient->eap->code);
