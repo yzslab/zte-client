@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
                     web_auth_password_enocod = BASE64_ENCODER;
                 break;
             case 's':
-                openlog("zte-client", LOG_PID, LOG_AUTH);
+                openlog("zte-client", LOG_PID, LOG_DAEMON);
                 loggerPointer = syslogLogger;
                 break;
             case 'h':
@@ -387,7 +387,7 @@ static void stdoutLogger(char *format, va_list ap) {
 }
 
 static void syslogLogger(char *format, va_list ap) {
-    vsyslog(LOG_INFO, format, ap);
+    vsyslog(LOG_WARNING, format, ap);
 }
 
 static void *startZteClientAdapter(void *ptr) {
