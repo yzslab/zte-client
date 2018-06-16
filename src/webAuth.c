@@ -118,6 +118,7 @@ int startWebAuth(webAuth *client) {
                 curl_easy_setopt(curl, CURLOPT_HEADER, 1L);
                 curl_easy_setopt(curl, CURLOPT_HEADERDATA, &success);
                 curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, logCallback);
                 curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 
 
@@ -236,7 +237,7 @@ static size_t writeCallback(char *ptr, size_t size, size_t nmemb, void *userdata
     size_t write_size; // 用于保存写入量
 
     if ((write_size = (size_t) write(fd, ptr, size * nmemb)) <= 0) {
-        strerror_r(errno, errorBuffer, 255);
+        strerror_r(errno, errorBuffer, 256);
         zteLog("Verify code write: %s\n", errorBuffer);
         return 0;
     }
