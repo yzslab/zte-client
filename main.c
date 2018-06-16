@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
                     web_auth_password_enocod = BASE64_ENCODER;
                 break;
             case 's':
-                openlog("zte-client", LOG_PID, LOG_DAEMON);
+                openlog("zte-client", 0, LOG_DAEMON);
                 loggerPointer = syslogLogger;
                 break;
             case 'h':
