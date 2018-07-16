@@ -242,8 +242,13 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    if (username == NULL || password == NULL || dev == NULL) {
-        fprintf(stderr, "--zteuser or --ztepass or --device not set, disable zte authentication.\n");
+    if (dev == NULL) {
+        fprintf(stderr, "The value of --dev can not be empty.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (username == NULL || password == NULL) {
+        fprintf(stderr, "--zteuser or --ztepass not set, disable zte authentication.\n");
     }
 
     if (!lock_pid_file()) {
@@ -269,7 +274,7 @@ int main(int argc, char *argv[]) {
 
 
     zte *zteClient = NULL;
-    if (!(username == NULL || password == NULL || dev == NULL)) {
+    if (!(username == NULL || password == NULL)) {
         zteClient = createZteClient(username, password, dev, &exceptionIndex);
     }
     dhcpClient *dhcpClient1 = NULL;
