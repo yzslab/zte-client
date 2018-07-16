@@ -354,7 +354,8 @@ int main(int argc, char *argv[]) {
                             case SIGINT:
                             case SIGTERM:
                             case SIGQUIT:
-                                pthread_cancel(zteClientThread);
+                                if (zteClient)
+                                    pthread_cancel(zteClientThread);
                                 if (dhcpClient1)
                                     pthread_cancel(dhcpClientThread);
                                 if (webAuth1)
