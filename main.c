@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (dev == NULL) {
-        fprintf(stderr, "The value of --dev can not be empty.\n");
+        fprintf(stderr, "The value of --device can not be empty.\n");
         exit(EXIT_FAILURE);
     }
 
