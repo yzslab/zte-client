@@ -322,8 +322,6 @@ int main(int argc, char *argv[]) {
                 if (zteClient) {
                     pthread_create(&zteClientThread, NULL, startZteClientAdapter, zteClient);
                     pthread_detach(zteClientThread);
-                } else {
-                    kill(getpid(), SIGUSR1);
                 }
 
                 sigemptyset(&sigset);
@@ -344,7 +342,8 @@ int main(int argc, char *argv[]) {
                                     pthread_kill(webAuthClientThread, SIGUSR2);
                                 break;
                             case SIGHUP:
-                                pthread_cancel(zteClientThread);
+                                if (zteClient)
+                                    pthread_cancel(zteClientThread);
                                 if (dhcpClient1)
                                     pthread_cancel(dhcpClientThread);
                                 if (webAuth1)
