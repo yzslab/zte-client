@@ -243,8 +243,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (username == NULL || password == NULL || dev == NULL) {
-        fprintf(stderr, "--zteuser, --ztepass, --device are vital.\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "--zteuser or --ztepass or --device not set, disable zte authentication.\n");
     }
 
     if (!lock_pid_file()) {
@@ -269,8 +268,10 @@ int main(int argc, char *argv[]) {
     write_pid();
 
 
-
-    zte *zteClient = createZteClient(username, password, dev, &exceptionIndex);
+    zte *zteClient = NULL;
+    if (!(username == NULL || password == NULL || dev == NULL)) {
+        zteClient = createZteClient(username, password, dev, &exceptionIndex);
+    }
     dhcpClient *dhcpClient1 = NULL;
     if (dhcpClientType != NONE)
         dhcpClient1 = createDhcpClient(dev, dhcpClientType);
@@ -313,8 +314,12 @@ int main(int argc, char *argv[]) {
                     pthread_create(&webAuthClientThread, NULL, startWebAuthClientAdapter, webAuth1);
                     pthread_detach(webAuthClientThread);
                 }
-                pthread_create(&zteClientThread, NULL, startZteClientAdapter, zteClient);
-                pthread_detach(zteClientThread);
+                if (zteClient) {
+                    pthread_create(&zteClientThread, NULL, startZteClientAdapter, zteClient);
+                    pthread_detach(zteClientThread);
+                } else {
+                    kill(getpid(), SIGUSR1);
+                }
 
                 sigemptyset(&sigset);
                 sigaddset(&sigset, SIGUSR1);
@@ -339,7 +344,8 @@ int main(int argc, char *argv[]) {
                                     pthread_cancel(dhcpClientThread);
                                 if (webAuth1)
                                     pthread_cancel(webAuthClientThread);
-                                stopZteClient(zteClient);
+                                if (zteClient)
+                                    stopZteClient(zteClient);
                                 goto START_CLIENT;
                             case SIGINT:
                             case SIGTERM:
@@ -349,7 +355,8 @@ int main(int argc, char *argv[]) {
                                     pthread_cancel(dhcpClientThread);
                                 if (webAuth1)
                                     pthread_cancel(webAuthClientThread);
-                                stopZteClient(zteClient);
+                                if (zteClient)
+                                    stopZteClient(zteClient);
                                 goto END_PROGRAM;
                                 break;
                             default:
